@@ -15,32 +15,6 @@ A beautiful, intuitive Flutter Android client for browsing and downloading torre
 - **🔒 Privacy Focused**: No accounts or tracking
 - **🌐 Offline Favorites**: Access favorites offline
 
-## 🖼️ Screenshots (Conceptual)
-
-### Main Search Interface
-![Search Screen](https://via.placeholder.com/360x640/4A148C/FFFFFF?text=Search+Screen)
-*Search bar, tab indicator, and scrollable results list*
-
-### Torrent Result Card
-![Torrent Card](https://via.placeholder.com/340x120/FFFFFF/212121?text=Torrent+Result+Card)
-*Each result shows title, metadata, stats, and action buttons*
-
-### Detailed Torrent View
-![Detail Screen](https://via.placeholder.com/360x640/FFFFFF/212121?text=Detail+Screen)
-*Full details including files, technical info, and description*
-
-### Uploader-Specific Search
-![Uploader Search](https://via.placeholder.com/360x640/4A148C/FFFFFF?text=Uploader+Search)
-*Special mode for @username or username: searches*
-
-### Favorites Management
-![Favorites Screen](https://via.placeholder.com/360x640/FFFFFF/212121?text=Favorites+Screen)
-*List of favorited uploaders with stats and actions*
-
-### Settings & About
-![Settings Screen](https://via.placeholder.com/360x640/212121/FFFFFF?text=Settings+Screen)
-*Appearance, behavior, network, and about sections*
-
 ## 🛠️ Technical Implementation
 
 ### Key Technologies
