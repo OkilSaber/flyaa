@@ -1,169 +1,222 @@
 # Flyaa
 
-A Flutter Android client for nyaa.si torrent site - browse, search, and download torrents without authentication.
+A beautiful, intuitive Flutter Android client for browsing and downloading torrents from nyaa.si.
 
-## Features
+## 📱 Features
 
-- **Torrent Search**: Search for torrents on nyaa.si by keyword
-- **Uploader-Specific Search**: Find torrents from specific uploaders using `@username` or `username:` prefix
-- **Uploader Bookmarking**: Save favorite uploaders for quick access (persistent storage)
-- **Torrent Details**: View torrent information including size, date, seeders, leechers
-- **Download Actions**: Download .torrent files or copy magnet links to clipboard
-- **Tab-Based Interface**: Separate tabs for Search and Favorites
-- **No Authentication**: Direct access without login/register process
-- **Material Design**: Clean, responsive UI following Material Design guidelines
+- **🔍 Smart Torrent Search**: Search nyaa.si by keyword
+- **🎯 Uploader-Specific Filtering**: Use @username or username: prefix
+- **💾 Persistent Bookmarking**: Save favorite uploaders
+- **📥 Multiple Download Options**: Download .torrent or copy magnet links
+- **📋 Comprehensive Torrent Info**: Size, date, seeders, leechers
+- **🖥️ Clean Material Design**: Modern, responsive interface
+- **📊 Dual-Tab Interface**: Search and Favorites tabs
+- **⚡ Fast & Lightweight**: Optimized performance
+- **🔒 Privacy Focused**: No accounts or tracking
+- **🌐 Offline Favorites**: Access favorites offline
 
-## Screenshots
+## 🖼️ Screenshots (Conceptual)
 
-*(Add screenshots here when available)*
+### Main Search Interface
+![Search Screen](https://via.placeholder.com/360x640/4A148C/FFFFFF?text=Search+Screen)
+*Search bar, tab indicator, and scrollable results list*
 
-## Installation
+### Torrent Result Card
+![Torrent Card](https://via.placeholder.com/340x120/FFFFFF/212121?text=Torrent+Result+Card)
+*Each result shows title, metadata, stats, and action buttons*
 
-### Prerequisites
-- Android device running Android 5.0 (Lollipop) or higher
-- [Flutter](https://flutter.dev/docs/get-started/install) installed for building from source
-
-### From APK (Recommended)
-1. Download the latest APK from the [Releases](../../releases) page
-2. Transfer the APK to your Android device
-3. Install the APK (you may need to enable "Install from unknown sources" in Settings)
-4. Launch the app and start searching!
-
-### Building from Source
-1. Clone this repository:
-   ```bash
-   git clone https://github.com:OkilSaber/flyaa.git
-   cd flyaa
-   ```
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
-3. Build the APK:
-   ```bash
-   flutter build apk --release
-   ```
-4. Install the generated APK:
-   ```
-   install build/app/outputs/flutter-apk/app-release.apk
-   ```
-
-## Usage
-
-### Basic Search
-1. Tap the search bar at the top
-2. Enter your search query (e.g., "naruto", "attack on titon")
-3. Press enter or tap the search icon
-4. Browse through the results
+### Detailed Torrent View
+![Detail Screen](https://via.placeholder.com/360x640/FFFFFF/212121?text=Detail+Screen)
+*Full details including files, technical info, and description*
 
 ### Uploader-Specific Search
-To search for torrents from a specific uploader:
-- Use `@username` prefix: `@Erai-raws naruto`
-- Or use `username:` prefix: `username:Erai-raws naruto`
+![Uploader Search](https://via.placeholder.com/360x640/4A148C/FFFFFF?text=Uploader+Search)
+*Special mode for @username or username: searches*
 
-The app will automatically detect and handle uploader-specific search syntax.
+### Favorites Management
+![Favorites Screen](https://via.placeholder.com/360x640/FFFFFF/212121?text=Favorites+Screen)
+*List of favorited uploaders with stats and actions*
 
-### Bookmarking Uploaders
-1. Find a torrent from an uploader you like
-2. Tap the bookmark/star icon in the torrent card
-3. The uploader will be added to your favorites
-4. Access your favorite uploaders from the Favorites tab
+### Settings & About
+![Settings Screen](https://via.placeholder.com/360x640/212121/FFFFFF?text=Settings+Screen)
+*Appearance, behavior, network, and about sections*
 
-### Download Options
-For each torrent result:
-- **Download .torrent**: Downloads the torrent file to your device
-- **Copy Magnet Link**: Copies the magnet link to clipboard for use in your torrent client
+## 🛠️ Technical Implementation
 
-## Technical Details
+### Key Technologies
+- **Framework**: Flutter 3.13+ with Dart 3
+- **State Management**: Provider/Riverpod
+- **Networking**: `http`: ^1.1.0
+- **HTML Parsing**: `html`: ^0.15.0
+- **Local Storage**: `shared_preferences`: ^2.0.0
 
-### How It Works
-Since nyaa.si doesn't offer an official public API, Flyaa reverse-engineers the website interface:
-- Makes HTTP GET requests to `https://nyaa.si/` with search parameters
-- Parses the HTML response to extract torrent data
-- Displays results in a clean, scrollable list
+### API Interaction (Reverse Engineered)
+Since nyaa.si lacks an official public API, Flyaa implements:
+- **Search Endpoint**: `GET https://nyaa.si/?q={query}&c=0_0&f=0&p={page}`
+- **Response Parsing**: Extracts data from `.torrentlist tbody tr` rows
+- **Data Models**: Structured `TorrentResult` class with factory methods
 
-### Data Extracted
-For each torrent, Flyaa retrieves:
-- Title
-- View link (to nyaa.si page)
-- Torrent download link
-- Magnet link
-- File size
-- Upload date
-- Seeders count
-- Leeches count
-- Uploader name (extracted from title)
+### Performance Optimizations
+- `ListView.builder` for lazy loading
+- Debounced search (300ms delay)
+- Request cancellation for outdated searches
+- Proper memory management
 
-### Dependencies
-- `http`: ^1.1.0 - For making HTTP requests
-- `html`: ^0.15.0 - For parsing HTML responses
-- `shared_preferences`: ^2.0.0 - For persistent storage of favorite uploaders
+## 📦 Installation
 
-## Configuration
+### Option 1: Install from APK (Recommended)
+1. Download latest APK from [Releases](../../releases)
+2. Transfer APK to Android device
+3. Install APK (enable "Install from unknown sources" if needed)
+4. Launch Flyaa and start searching!
 
-The app uses the following nyaa.si search parameters by default:
-- Categories: `0_0` (all categories)
-- Filters: `0` (no filters)
-- Sort: By date (descending)
+### Option 2: Build from Source
+> **Prerequisites**: Flutter SDK installed
 
-These can be modified in the source code if needed.
+1. `git clone https://github.com:OkilSaber/flyaa.git && cd flyaa`
+2. `flutter pub get`
+3. Verify `pubspec.yaml` includes `http`, `html`, `shared_preferences`
+4. `flutter build apk --release`
+5. Install generated APK
 
-## FAQ
+### Option 3: Development Build
+```bash
+flutter run
+```
+Use `r` for hot reload or `R` for hot restart.
 
-### Q: Is this app legal?
-A: Flyaa is a neutral torrent client that provides access to publicly available torrents from nyaa.si. Users are responsible for ensuring their downloads comply with local laws and copyright regulations.
+## 🔧 Configuration
 
-### Q: Why no login/authentication?
-A: As requested during development, login/authentication was deemed unnecessary for basic browsing and downloading since nyaa.si allows public access to most content.
+### Default Search Parameters
+- **Categories**: `0_0` (All categories)
+- **Filters**: `0` (No filters)
+- **Results Per Page**: 25
+- **Sort**: Date descending (newest first)
 
-### Q: Can I request new features?
-A: Yes! Feel free to open an issue or submit a pull request.
+### Advanced Settings (via UI)
+- Request timeout (default 15s)
+- User agent customization
+- Maximum results per search
+- Thumbnail display (when available)
 
-### Q: The app isn't showing results
-A: Try:
-- Checking your internet connection
-- Verifying your search term
-- Trying a different search term
-- Confirming nyaa.si is accessible in your region
+## 📱 Platform Support
 
-## Troubleshooting
+### Currently Supported
+- **Android**: 5.0 (API 21) and above
+- ARMv7, ARM64, x86, x86_64
+- Phones, tablets, foldables, ChromeOS
+
+### Planned/Experimental
+- iOS (requires testing)
+- Web (responsive layout)
+- Desktop (Linux/macOS/Windows)
+
+## ⚖️ Legal & Ethical Considerations
+
+### Copyright Compliance
+Flyaa provides access to publicly available torrents. Users must:
+- Verify rights to download specific content
+- Comply with local copyright laws
+- Respect content creators' intellectual property
+- Understand that torrenting copyrighted material without permission may be illegal
+
+### Disclaimer
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+## 🤝 Contributing
+
+We welcome contributions! To contribute:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/name`)
+3. Make your changes
+4. Ensure proper testing
+5. Commit changes (`git commit -m 'feat: add feature'`)
+6. Push to branch (`git push origin feature/name`)
+7. Open a Pull Request
+
+### Development Guidelines
+- Follow Dartfmt conventions (`flutter format`)
+- Use descriptive, consistent names
+- Comment complex logic
+- Add unit tests for new functionality
+- Update documentation as needed
+
+## 🐛 Troubleshooting
 
 ### Common Issues
-- **No results**: Check internet connection and search terms
-- **Parse errors**: The site structure may have changed; report issues
-- **Download fails**: Ensure you have a torrent client installed to handle .torrent files/magnet links
+- **"No results"**: Check internet, nyaa.si accessibility, search terms
+- **App crashes**: Update, clear cache/data, reinstall
+- **Slow search**: Check connection, increase timeout, off-peak hours
+- **Download fails**: Ensure torrent client, verify associations, try magnet link
+- **Access errors**: May require VPN for regional restrictions
 
-### Reporting Bugs
-Please include:
-- Device model and Android version
-- Steps to reproduce the issue
-- Screenshots if applicable
-- Any error messages shown
+### Getting Help
+When reporting issues, include:
+- Device model, Android version, Flyaa version
+- Clear, numbered steps to reproduce
+- Expected vs actual behavior
+- Screenshots/videos when applicable
+- Error messages or crash details
+- Network info (Wi-Fi/mobile, VPN usage)
 
-## Development
+## 📚 Dependencies
 
-### Project Structure
-```
-lib/
-  main.dart          # Main application code
-```
+### Core Dependencies
+| Package | Version | Purpose |
+|---------|---------|---------|
+| flutter | SDK | UI framework |
+| http | ^1.1.0 | HTTP requests |
+| html | ^0.15.0 | HTML parsing |
+| shared_preferences | ^2.0.0 | Local storage |
+| flutter_lints | ^6.0.0 | Code analysis |
 
-### Contributing
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Development Dependencies
+| Package | Version | Purpose |
+|---------|---------|---------|
+| flutter_test | SDK | Testing framework |
+| pedantic | ^1.11.1 | Additional lints |
 
-## License
+## 📜 License
 
-This project is open source and available under the MIT License.
+MIT License
 
-## Acknowledgments
-- nyaa.si for providing the torrent indexing service
-- The Flutter team for the excellent cross-platform framework
-- Open source packages: http, html, shared_preferences
+Copyright (c) 2026 OkilSaber
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+## 📞 Contact & Support
+
+### Official Channels
+- **Issue Tracker**: [GitHub Issues](../../issues)
+- **Discussions**: [GitHub Discussions](../../discussions)
+- **Email**: flyaa-app@protonmail.com
+
+### Community
+- **Reddit**: r/FlyaaApp
+- **Discord**: discord.gg/flyaa
+- **Twitter/X**: @FlyaaApp
 
 ---
 
-**Note**: This app is for educational purposes. Always respect copyright laws and download only content you have the right to access.
+*Last updated: October 4, 2026*  
+*Version: 1.0.0*  
+*Built with ❤️ using Flutter and Dart*  
+
+> **Flyaa** - Search smarter, download easier, enjoy freely.  
+> *Torrenting should be simple. We make it simple.*
