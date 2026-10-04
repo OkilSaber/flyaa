@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:html/parser.dart' show parse;
+import 'package:html/dom.dart' hide Text;
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const MyApp());
@@ -7,116 +11,398 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flyaa',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
+        primarySwatch: Colors.blue,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const NyaaHomePage(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
+class NyaaHomePage extends StatefulWidget {
+  const NyaaHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<NyaaHomePage> createState() => _NyaaHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
+class _NyaaHomePageState extends State<NyaaHomePage> {
+  final TextEditingController _searchController = TextEditingController();
+  List<TorrentResult> _results = [];
+  bool _isLoading = false;
+  String _error = '';
+  Set<String> _favorites = {};
+  bool _isSearchingByUploader = false;
+  final String _favoritesKey = 'favorite_uploaders';
 
-  void _incrementCounter() {
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
+
+  Future<void> _loadFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? favs = prefs.getStringList(_favoritesKey);
+    if (favs != null) {
+      setState(() {
+        _favorites = Set.from(favs);
+      });
+    }
+  }
+
+  Future<void> _saveFavorites() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(_favoritesKey, _favorites.toList());
+  }
+
+  void _toggleFavoriteUploader(String username) {
     setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
+      if (_favorites.contains(username)) {
+        _favorites.remove(username);
+      } else {
+        _favorites.add(username);
+      }
     });
+    _saveFavorites();
+  }
+
+  Future<void> _searchTorrents(String query, {bool isUploaderSearch = false}) async {
+    if (query.isEmpty) {
+      setState(() {
+        _results = [];
+        _error = '';
+        _isSearchingByUploader = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _error = '';
+      _isSearchingByUploader = isUploaderSearch;
+    });
+
+    try {
+      // Determine search parameters
+      final String searchQuery;
+      if (isUploaderSearch) {
+        // For uploader search, we use the username: prefix in the query
+        searchQuery = query;
+      } else {
+        searchQuery = query;
+      }
+
+      final response = await http.get(
+        Uri.parse('https://nyaa.si/')
+            .replace(queryParameters: {'q': searchQuery, 'c': '0_0', 'f': '0'}),
+      );
+
+      if (response.statusCode == 200) {
+        final List<TorrentResult> results = _parseSearchResults(response.body);
+        setState(() {
+          _results = results;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _isLoading = false;
+          _error = 'Failed to load results: ${response.statusCode}';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Error: $e';
+      });
+    }
+  }
+
+  List<TorrentResult> _parseSearchResults(String html) {
+    final document = parse(html);
+    final tableRows = document.querySelectorAll('table > tr');
+
+    final List<TorrentResult> results = [];
+
+    for (final row in tableRows) {
+      final cells = row.querySelectorAll('td');
+      if (cells.length < 8) continue;
+
+      final nameCell = cells[1];
+      final linkCell = cells[2];
+      final sizeCell = cells[3];
+      final dateCell = cells[4];
+      final seedersCell = cells[5];
+      final leechersCell = cells[6];
+
+      // Extract title and view link
+      final nameLink = nameCell.querySelector('a');
+      final String? viewLink = nameLink?.attributes['href'];
+      final String? title = nameLink?.text.trim();
+
+      // Extract torrent download link and magnet link
+      final torrentLink = linkCell.querySelector('a[href\$=".torrent"]');
+      final String? torrentDownloadLink = torrentLink?.attributes['href'];
+      final String? magnetLink = linkCell
+          .querySelector('a[href^="magnet:"]')
+          ?.attributes['href'];
+
+      // Extract size, date, seeders, leechers
+      final String size = sizeCell.text.trim();
+      final String date = dateCell.text.trim();
+      final int seeders = int.tryParse(seedersCell.text.trim()) ?? 0;
+      final int leechers = int.tryParse(leechersCell.text.trim()) ?? 0;
+
+      // Try to extract uploader info from the title or other cells
+      // In nyaa.si, uploader information is often in the title or in a tooltip
+      // For simplicity, we'll try to extract from title if it follows [Uploader] Title format
+      String? uploader;
+      if (title != null) {
+        // Check if title starts with [Uploader]
+        final RegExp uploaderRegex = RegExp(r'^\[([^\]]+)\]\s+(.+)$');
+        final Match? match = uploaderRegex.firstMatch(title);
+        if (match != null) {
+          uploader = match.group(1)!;
+          // If we want to store the clean title without the uploader prefix
+          // final String cleanTitle = match.group(2)!;
+        }
+      }
+
+      if (viewLink != null &&
+          title != null &&
+          torrentDownloadLink != null &&
+          magnetLink != null) {
+        results.add(TorrentResult(
+          title: title,
+          viewLink: viewLink,
+          torrentDownloadLink: torrentDownloadLink,
+          magnetLink: magnetLink,
+          size: size,
+          date: date,
+          seeders: seeders,
+          leechers: leechers,
+          uploader: uploader,
+        ));
+      }
+    }
+
+    return results;
   }
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Flyaa'),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Search'),
+              Tab(text: 'Favorites'),
+            ],
+          ),
+        ),
+        body: TabBarView(
           children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
+            _buildSearchTab(),
+            _buildFavoritesTab(),
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
     );
   }
+
+  Widget _buildSearchTab() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Search for torrents...',
+                    suffixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                  onSubmitted: (query) => _searchTorrents(query),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                onPressed: () {
+                  final query = _searchController.text.trim();
+                  if (query.isNotEmpty) {
+                    // Check if it's an uploader search (starts with @ or username:)
+                    if (query.startsWith('@') || query.startsWith('username:')) {
+                      final String uploaderQuery = query.replaceFirst(RegExp(r'^@|^username:'), '');
+                      _searchTorrents(uploaderQuery, isUploaderSearch: true);
+                    } else {
+                      _searchTorrents(query);
+                    }
+                  }
+                },
+                icon: const Icon(Icons.search),
+                label: const Text('Search'),
+              ),
+            ],
+          ),
+        ),
+        if (_isLoading)
+          const Expanded(child: Center(child: CircularProgressIndicator()))
+        else if (_error.isNotEmpty)
+          Expanded(child: Center(child: Text(_error, style: const TextStyle(color: Colors.red))))
+        else if (_results.isEmpty)
+          const Expanded(child: Center(child: Text('No results. Enter a search query.')))
+        else
+          Expanded(
+            child: ListView.builder(
+              itemCount: _results.length,
+              itemBuilder: (context, index) {
+                final result = _results[index];
+                final bool isFavorite = _favorites.contains(result.uploader ?? '');
+                return Card(
+                  margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  child: ListTile(
+                    title: Text(
+                      result.title,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Size: ${result.size}'),
+                        Text('Date: ${result.date}'),
+                        Text(
+                            'Seeders: ${result.seeders} | Leechers: ${result.leechers}'),
+                        if (result.uploader != null)
+                          Text(
+                            'Uploader: ${result.uploader}',
+                            style: TextStyle(
+                              color: isFavorite ? Colors.orange : Colors.grey[600],
+                              fontWeight: isFavorite ? FontWeight.bold : FontWeight.normal,
+                            ),
+                          ),
+                      ],
+                    ),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Favorite/Uploader bookmark button
+                        if (result.uploader != null)
+                          IconButton(
+                            icon: Icon(
+                              isFavorite ? Icons.star : Icons.star_border,
+                              color: isFavorite ? Colors.orange : Colors.grey,
+                            ),
+                            tooltip: isFavorite
+                                ? 'Remove from favorites'
+                                : 'Add uploader to favorites',
+                            onPressed: () => _toggleFavoriteUploader(result.uploader!),
+                          ),
+                        const SizedBox(width: 4),
+                        // Download button
+                        IconButton(
+                          icon: const Icon(Icons.download),
+                          tooltip: 'Download .torrent',
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Downloading: ${result.title}'),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        // Magnet link button
+                        IconButton(
+                          icon: const Icon(Icons.link),
+                          tooltip: 'Copy magnet link',
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Magnet link copied!'),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      // TODO: Navigate to detail page
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildFavoritesTab() {
+    if (_favorites.isEmpty) {
+      return const Center(
+        child: Text(
+          'No favorite uploaders yet.\nSearch for torrents and add uploaders to your favorites!',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return ListView.builder(
+      itemCount: _favorites.length,
+      itemBuilder: (context, index) {
+        final uploader = _favorites.elementAt(index);
+        return ListTile(
+          leading: const Icon(Icons.person, color: Colors.orange),
+          title: Text(uploader, style: const TextStyle(fontWeight: FontWeight.bold)),
+          subtitle: const Text('Favorite uploader'),
+          trailing: IconButton(
+            icon: const Icon(Icons.delete),
+            tooltip: 'Remove from favorites',
+            onPressed: () => _toggleFavoriteUploader(uploader),
+          ),
+          onTap: () {
+            // Search for torrents from this uploader
+            _searchController.text = 'username:$uploader';
+            _searchTorrents(uploader, isUploaderSearch: true);
+            // Switch to search tab
+            DefaultTabController.of(context).index = 0;
+          },
+        );
+      },
+    );
+  }
+}
+
+class TorrentResult {
+  final String title;
+  final String viewLink;
+  final String torrentDownloadLink;
+  final String magnetLink;
+  final String size;
+  final String date;
+  final int seeders;
+  final int leechers;
+  final String? uploader; // Extracted from title if available
+
+  TorrentResult({
+    required this.title,
+    required this.viewLink,
+    required this.torrentDownloadLink,
+    required this.magnetLink,
+    required this.size,
+    required this.date,
+    required this.seeders,
+    required this.leechers,
+    this.uploader,
+  });
 }
